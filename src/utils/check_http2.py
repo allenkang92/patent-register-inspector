@@ -1,26 +1,13 @@
 import asyncio
 import os
-from aioquic.asyncio import connect
-from aioquic.quic.configuration import QuicConfiguration
 from dotenv import load_dotenv
 import httpx
 
 # 환경 변수 로드
 load_dotenv()
 
-# 엔드포인트 URL (올바른 API 엔드포인트로 수정)
+# 엔드포인트 URL
 api_url = os.getenv('API_ENDPOINT', 'http://apis.data.go.kr/1430000/PttRgstRtInfoInqSvc')
-
-# QUIC (HTTP/3) 지원 확인 코드
-async def check_quic_http3_support():
-    config = QuicConfiguration(is_client=True)
-    
-    try:
-        # QUIC 연결 시도 (포트 443 사용)
-        async with connect(api_url, port=443, configuration=config) as protocol:
-            print(f"엔드포인트 {api_url}가 HTTP/3 (QUIC)를 지원합니다.")
-    except Exception as e:
-        print(f"HTTP/3 (QUIC) 지원 확인 중 오류 발생: {e}")
 
 # Keep-Alive 및 TLS 최적화 확인 코드
 async def check_keep_alive_tls():
@@ -48,7 +35,6 @@ async def check_keep_alive_tls():
 
 # 비동기 함수 실행
 async def main():
-    await check_quic_http3_support()
     await check_keep_alive_tls()
 
 # main 함수 호출
