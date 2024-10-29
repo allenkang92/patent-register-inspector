@@ -2,9 +2,8 @@ import os
 import httpx
 import sqlite3
 
-# SQLite 데이터베이스 경로 설정
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(BASE_DIR, '..', 'data', 'patent_register.db')
+# SQLite 데이터베이스 경로 설정 (루트 디렉토리의 data 폴더)
+db_path = os.path.join(os.getcwd(), 'data', 'patent_register.db')
 
 # SQLite 데이터베이스 연결
 conn = sqlite3.connect(db_path)

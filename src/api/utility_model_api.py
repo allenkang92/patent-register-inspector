@@ -10,7 +10,6 @@ db_path = os.path.join(BASE_DIR, '..', 'data', 'patent_register.db')
 conn = sqlite3.connect(db_path)
 c = conn.cursor()
 
-# 실용신안 API 호출 및 데이터 적재 함수
 async def fetch_utility_model_data(registration_number: str, service_key: str):
     api_url = "https://apis.data.go.kr/1430000/PttRgstRtInfoInqSvc/getUtilityModelHistory"
     params = {

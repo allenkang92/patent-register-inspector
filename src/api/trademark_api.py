@@ -2,9 +2,8 @@ import os
 import httpx
 import sqlite3
 
-# SQLite 데이터베이스 경로 설정
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(BASE_DIR, '..', 'data', 'patent_register.db')
+# SQLite 데이터베이스 경로 설정 (루트 디렉토리의 data 폴더)
+db_path = os.path.join(os.getcwd(), 'data', 'patent_register.db')
 
 # SQLite 데이터베이스 연결
 conn = sqlite3.connect(db_path)
@@ -24,7 +23,7 @@ async def fetch_trademark_data(registration_number: str, service_key: str):
         if response.status_code == 200:
             data = response.json()
             
-            # 데이터 중복 방지 (동일한 등록번호가 있는지 확인)
+            # 데이터 중복 방지
             c.execute('SELECT * FROM trademarks WHERE registration_number = ?', (registration_number,))
             result = c.fetchone()
 
