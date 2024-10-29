@@ -1,28 +1,14 @@
+import os
 import httpx
 import sqlite3
-from fastapi import FastAPI
 
-app = FastAPI()
+# SQLite 데이터베이스 경로 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, '..', 'data', 'patent_register.db')
 
 # SQLite 데이터베이스 연결
-conn = sqlite3.connect('data/patent_register.db')
+conn = sqlite3.connect(db_path)
 c = conn.cursor()
-
-# 디자인 테이블 생성 함수
-def create_design_table():
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS designs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            registration_number TEXT UNIQUE,
-            title TEXT,
-            applicant TEXT,
-            registration_date TEXT
-        )
-    ''')
-    conn.commit()
-
-# 테이블 생성 실행
-create_design_table()
 
 # 디자인 API 호출 및 데이터 적재 함수
 async def fetch_design_data(registration_number: str, service_key: str):
@@ -37,8 +23,8 @@ async def fetch_design_data(registration_number: str, service_key: str):
         response = await client.get(api_url, params=params)
         if response.status_code == 200:
             data = response.json()
-
-            # 데이터 중복 방지
+            
+            # 데이터 중복 방지 (동일한 등록번호가 있는지 확인)
             c.execute('SELECT * FROM designs WHERE registration_number = ?', (registration_number,))
             result = c.fetchone()
 
@@ -49,15 +35,10 @@ async def fetch_design_data(registration_number: str, service_key: str):
                     VALUES (?, ?, ?, ?)
                 ''', (data['items']['rgstNo'], data['items']['title'], data['items']['applicant'][0]['applicantName'], data['items']['rgstDate']))
                 conn.commit()
-                print(f"디자인 데이터 적재 성공: {registration_number}")
+                return data
             else:
                 print(f"디자인 데이터가 이미 존재합니다: {registration_number}")
+                return result
         else:
             print(f"API 요청 실패: {response.status_code}")
-
-# 데이터 적재 후 API 엔드포인트에서 확인
-@app.get("/api/designs")
-async def get_designs_from_db():
-    c.execute('SELECT * FROM designs')
-    rows = c.fetchall()
-    return {"data": rows}
+            return None

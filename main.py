@@ -1,18 +1,23 @@
+import os
+import sqlite3
 from fastapi import FastAPI
 from api.patent_api import fetch_patent_data
 from api.utility_model_api import fetch_utility_model_data
 from api.design_api import fetch_design_data
 from api.trademark_api import fetch_trademark_data
 from prometheus_client import Counter, make_asgi_app
-import sqlite3
 
 app = FastAPI()
 
 # Prometheus 메트릭 설정
 REQUEST_COUNT = Counter('http_requests_total', 'Total number of HTTP requests', ['method', 'endpoint', 'http_status'])
 
+# SQLite 데이터베이스 경로 설정
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # src 폴더 상위 디렉터리로 이동
+db_path = os.path.join(BASE_DIR, 'data', 'patent_register.db')
+
 # SQLite 데이터베이스 연결 설정
-conn = sqlite3.connect('data/patent_register.db')
+conn = sqlite3.connect(db_path)
 c = conn.cursor()
 
 # 테이블 생성 함수
