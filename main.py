@@ -1,66 +1,41 @@
 import os
-import sqlite3
-from fastapi import FastAPI
-from api.patent_api import fetch_patent_data
-from api.utility_model_api import fetch_utility_model_data
-from api.design_api import fetch_design_data
-from api.trademark_api import fetch_trademark_data
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, make_asgi_app
 
-app = FastAPI()
+# Local imports
+from src.config import settings
+from src.database import Database
+from src.api.patent_api import fetch_patent_data
+from src.api.utility_model_api import fetch_utility_model_data
+from src.api.design_api import fetch_design_data
+from src.api.trademark_api import fetch_trademark_data
+
+# FastAPI 앱 초기화
+app = FastAPI(
+    title="특허 등록원부 조회 API",
+    description="특허, 실용신안, 디자인, 상표 등록원부 조회 API Gateway",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# CORS 미들웨어 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 데이터베이스 초기화
+database = Database()
+database.initialize_tables()
 
 # Prometheus 메트릭 설정
 REQUEST_COUNT = Counter('http_requests_total', 'Total number of HTTP requests', ['method', 'endpoint', 'http_status'])
-
-# SQLite 데이터베이스 경로 설정 (루트 디렉토리의 data 폴더)
-db_path = os.path.join(os.getcwd(), 'data', 'patent_register.db')
-
-# SQLite 데이터베이스 연결 설정
-conn = sqlite3.connect(db_path)
-c = conn.cursor()
-
-# 테이블 생성 함수
-def create_tables():
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS patents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            registration_number TEXT,
-            title TEXT,
-            applicant TEXT,
-            registration_date TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS utility_models (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            registration_number TEXT,
-            title TEXT,
-            applicant TEXT,
-            registration_date TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS designs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            registration_number TEXT,
-            title TEXT,
-            applicant TEXT,
-            registration_date TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS trademarks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            registration_number TEXT,
-            title TEXT,
-            applicant TEXT,
-            registration_date TEXT
-        )
-    ''')
-    conn.commit()
-
-# 테이블 생성 실행
-create_tables()
 
 # Prometheus 미들웨어
 @app.middleware("http")
@@ -69,19 +44,91 @@ async def add_prometheus_metrics(request, call_next):
     REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
     return response
 
-# API 엔드포인트 예시
+# 루트 경로 -> Swagger 문서
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
+
+# 상태 확인 엔드포인트
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+        "api_status": "operational"
+    }
+
+# API 엔드포인트 목록
+@app.get("/api")
+async def api_routes():
+    return {
+        "endpoints": {
+            "patents": "/api/patents/{rgstNo}",
+            "utility_models": "/api/utility_models/{rgstNo}",
+            "designs": "/api/designs/{rgstNo}",
+            "trademarks": "/api/trademarks/{rgstNo}"
+        }
+    }
+
+# 특허 API 엔드포인트
 @app.get("/api/patents/{rgstNo}")
 async def get_patents(rgstNo: str):
-    service_key = 'your_service_key'  # 발급받은 API 인증키 입력
-    patent_data = await fetch_patent_data(rgstNo, service_key)
-    if patent_data:
-        return {"특허 등록원부 데이터": patent_data}
-    else:
-        return {"message": "특허 데이터 조회 실패"}
+    try:
+        patent_data = await fetch_patent_data(rgstNo, settings.API_SERVICE_KEY)
+        if patent_data:
+            return {
+                "status": "success",
+                "data": patent_data
+            }
+        raise HTTPException(status_code=404, detail="특허 데이터를 찾을 수 없습니다")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 실용신안 API 엔드포인트
+@app.get("/api/utility_models/{rgstNo}")
+async def get_utility_models(rgstNo: str):
+    try:
+        utility_model_data = await fetch_utility_model_data(rgstNo, settings.API_SERVICE_KEY)
+        if utility_model_data:
+            return {
+                "status": "success",
+                "data": utility_model_data
+            }
+        raise HTTPException(status_code=404, detail="실용신안 데이터를 찾을 수 없습니다")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 디자인 API 엔드포인트
+@app.get("/api/designs/{rgstNo}")
+async def get_designs(rgstNo: str):
+    try:
+        design_data = await fetch_design_data(rgstNo, settings.API_SERVICE_KEY)
+        if design_data:
+            return {
+                "status": "success",
+                "data": design_data
+            }
+        raise HTTPException(status_code=404, detail="디자인 데이터를 찾을 수 없습니다")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 상표 API 엔드포인트
+@app.get("/api/trademarks/{rgstNo}")
+async def get_trademarks(rgstNo: str):
+    try:
+        trademark_data = await fetch_trademark_data(rgstNo, settings.API_SERVICE_KEY)
+        if trademark_data:
+            return {
+                "status": "success",
+                "data": trademark_data
+            }
+        raise HTTPException(status_code=404, detail="상표 데이터를 찾을 수 없습니다")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Prometheus 메트릭 엔드포인트
 app.mount("/metrics", make_asgi_app())
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080, debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, debug=True)
