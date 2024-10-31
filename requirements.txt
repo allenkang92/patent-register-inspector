@@ -1,3 +1,15 @@
-httpx==0.27.2
-requests==2.31.0
-python-dotenv==1.0.0 
+# requirements.txt
+
+# HTTP 클라이언트 라이브러리
+httpx==0.27.2       # 비동기 HTTP 클라이언트 (KIPRIS API 호출용)
+requests==2.31.0    # 동기 HTTP 클라이언트 (필요한 경우 사용)
+
+# 환경 설정
+python-dotenv==1.0.0  # 환경 변수 관리 (.env 파일 사용)
+
+# 큐 시스템
+redis==4.5.1        # Redis 클라이언트 (작업 큐 및 캐싱용)
+rq==1.11.1          # Python 작업 큐 라이브러리
+
+# 모니터링
+prometheus-client==0.16.0  # Prometheus 메트릭 수집 및 내보내기
