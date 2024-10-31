@@ -13,3 +13,7 @@ rq==1.11.1          # Python 작업 큐 라이브러리
 
 # 모니터링
 prometheus-client==0.16.0  # Prometheus 메트릭 수집 및 내보내기
+
+
+uvicorn==0.15.0     # ASGI 서버 (FastAPI 실행용)
+fastapi==0.103.1
