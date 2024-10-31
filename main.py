@@ -1,3 +1,4 @@
+# main.py
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -11,6 +12,7 @@ from src.api.patent_api import fetch_patent_data
 from src.api.utility_model_api import fetch_utility_model_data
 from src.api.design_api import fetch_design_data
 from src.api.trademark_api import fetch_trademark_data
+from src.gateway.middleware import ApiGatewayMiddleware
 
 # FastAPI 앱 초기화
 app = FastAPI(
@@ -21,7 +23,7 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS 미들웨어 설정
+# 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API Gateway 미들웨어 추가
+app.add_middleware(ApiGatewayMiddleware)
 
 # 데이터베이스 초기화
 database = Database()
@@ -44,12 +49,11 @@ async def add_prometheus_metrics(request, call_next):
     REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
     return response
 
-# 루트 경로 -> Swagger 문서
+# 기본 엔드포인트들
 @app.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse(url="/docs")
 
-# 상태 확인 엔드포인트
 @app.get("/health")
 async def health_check():
     return {
@@ -58,7 +62,6 @@ async def health_check():
         "api_status": "operational"
     }
 
-# API 엔드포인트 목록
 @app.get("/api")
 async def api_routes():
     return {
@@ -70,59 +73,65 @@ async def api_routes():
         }
     }
 
-# 특허 API 엔드포인트
+# 작업 상태 조회 엔드포인트 추가
+@app.get("/api/jobs/{job_id}")
+async def get_job_status(job_id: str):
+    gateway = ApiGatewayMiddleware()
+    status = await gateway.queue_manager.get_job_status(job_id)
+    if not status:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return status
+
+# API 엔드포인트들
 @app.get("/api/patents/{rgstNo}")
 async def get_patents(rgstNo: str):
     try:
         patent_data = await fetch_patent_data(rgstNo, settings.API_SERVICE_KEY)
-        if patent_data:
-            return {
-                "status": "success",
-                "data": patent_data
-            }
-        raise HTTPException(status_code=404, detail="특허 데이터를 찾을 수 없습니다")
+        return {
+            "status": "success",
+            "data": patent_data
+        }
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 실용신안 API 엔드포인트
 @app.get("/api/utility_models/{rgstNo}")
 async def get_utility_models(rgstNo: str):
     try:
         utility_model_data = await fetch_utility_model_data(rgstNo, settings.API_SERVICE_KEY)
-        if utility_model_data:
-            return {
-                "status": "success",
-                "data": utility_model_data
-            }
-        raise HTTPException(status_code=404, detail="실용신안 데이터를 찾을 수 없습니다")
+        return {
+            "status": "success",
+            "data": utility_model_data
+        }
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 디자인 API 엔드포인트
 @app.get("/api/designs/{rgstNo}")
 async def get_designs(rgstNo: str):
     try:
         design_data = await fetch_design_data(rgstNo, settings.API_SERVICE_KEY)
-        if design_data:
-            return {
-                "status": "success",
-                "data": design_data
-            }
-        raise HTTPException(status_code=404, detail="디자인 데이터를 찾을 수 없습니다")
+        return {
+            "status": "success",
+            "data": design_data
+        }
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 상표 API 엔드포인트
 @app.get("/api/trademarks/{rgstNo}")
 async def get_trademarks(rgstNo: str):
     try:
         trademark_data = await fetch_trademark_data(rgstNo, settings.API_SERVICE_KEY)
-        if trademark_data:
-            return {
-                "status": "success",
-                "data": trademark_data
-            }
-        raise HTTPException(status_code=404, detail="상표 데이터를 찾을 수 없습니다")
+        return {
+            "status": "success",
+            "data": trademark_data
+        }
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
